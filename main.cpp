@@ -601,7 +601,7 @@ void loop() {
     if (systemRunning) {
        // charge 1
     if (charging) {
-      if (ap1 >= 41.6 && dong1 <= 0.09) {
+      if (ap1 >= 40.9 && dong1 <= 0.09) {
         if (nhietdo1 <= 33) {
           startDischarging();  // Điều kiện để chuyển qua xả
         } else {
@@ -625,7 +625,7 @@ void loop() {
     }
      // charge 2
     if (charging2) {
-      if (ap2 >= 41.6 && dong2 <= 0.09) {
+      if (ap2 >= 40.9 && dong2 <= 0.09) {
         if (nhietdo2 <= 33) {
           startDischarging2();  // Điều kiện để chuyển qua xả
         } else {
