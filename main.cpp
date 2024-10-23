@@ -250,7 +250,7 @@ void ham_doc_NTC1(){
       // Serial.print("Average analog reading "); 
      //Serial.println(average);
       // convert the value to resistance
-  average = 1023 / average - 1;
+  average = (1023/(float)average) - 1;
   average = SERIESRESISTOR / average;
   //Serial.print("Thermistor resistance "); 
   //Serial.println(average);
@@ -291,7 +291,7 @@ void ham_doc_NTC2(){
  // Serial.print("Average analog reading "); 
   //Serial.println(average1);
   // convert the value to resistance
-  average1 = 1023 / average1 - 1;
+  average1 = (1023/(float)average1) - 1;
   average1 = SERIESRESISTOR / average1;
   
   //Serial.println(average1);
