@@ -38,7 +38,7 @@ NTCtemp ntc(dientro, nominalResistance, nominalTemperature, beta);
 #define THERMISTORNOMINAL 10000      
 // temp. for nominal resistance (almost always 25 C)
 #define TEMPERATURENOMINAL 25   
-// how many samples to take and average, more takes longer
+// how many samples to take an average, more takes longer
 // but is more 'smooth'
 #define NUMSAMPLES 5
 // The beta coefficient of the thermistor (usually 3000-4000)
@@ -56,7 +56,7 @@ NTCtemp ntc(dientro, nominalResistance, nominalTemperature, beta);
 #define relay_charge_adaptor_2 6 //kích sạc gồm bật nguồn ac và T1 trong adaptor 2
 #define discharge_1 8 //đóng ngắt mosfet trong adaptor phần xả pin 1
 #define relay_5 7 //out điều khiển relay,mục đích chưa rõ
-#define bat_tat 16 //nhấn lần 1 start,nhấn lần nữa stop hiện lên lcd ,16 trên arduino micro, 10 trên arduino uno
+#define bat_tat 10 //nhấn lần 1 start,nhấn lần nữa stop hiện lên lcd ,16 trên arduino micro, 10 trên arduino uno
 #define enter 9 //chuyển đổi giữa các màn hình hiển thị lcd : áp1,dòng1,Temp1 , áp2,dòng2,Temp2 , trạng thái đang sạc hay đang xả
 
 // biến thời gian để chạy 1 giây 1 lần
