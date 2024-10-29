@@ -32,19 +32,19 @@ const float dientro = 10000;     // Điện trở nối tiếp 10kΩ
 NTCtemp ntc(dientro, nominalResistance, nominalTemperature, beta);
 */
 //CÁC BIẾN CẦN DÙNG
+//5V qua 1 chân trở 10k, chân còn lại qua NTC ,giữa chân sensor với trở kéo dây ra đưa về arduino
 // resistance at 25 degrees C
-//5V qua 1 chân sensor, chân còn lại qua trở 10k,giữa chân sensor với trở kéo dây ra đưa về arduino
 // chân còn lại của trở nối về GND
 #define THERMISTORNOMINAL 10000      
 // temp. for nominal resistance (almost always 25 C)
 #define TEMPERATURENOMINAL 25   
-// how many samples to take an average, more takes longer
+// how many samples to take and average, more takes longer
 // but is more 'smooth'
 #define NUMSAMPLES 5
 // The beta coefficient of the thermistor (usually 3000-4000)
 #define BCOEFFICIENT 3435
 // the value of the 'other' resistor
-#define SERIESRESISTOR 9850   // điên trở thực tế 
+#define SERIESRESISTOR 9690   // điên trở thực tế,đo VOM để lấy  
 
 #define current_sensor_1 A0
 #define current_sensor_2 A1
@@ -186,10 +186,10 @@ int samples[NUMSAMPLES];
      // Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023 (8bit)
  float voltage =((float)average_value/1023)*5;   // Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
   
- if(voltage<=2.746){dong1=0;} // Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
+ if(voltage<=2.748){dong1=0;} // Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
  else{
-   dong1 = voltage ; // Bây giờ ta chỉ cần tính ra giá trị dòng điện, 0.1 là độ nhạy của sensor 20A (100mV/A) ,2.5V tương ứng là 0A
-   dong1 = (dong1-2.746)/0.1;
+   dong1 = voltage ; // Bây giờ ta chỉ cần tính ra giá trị dòng điện, 0.1 là độ nhạy của sensor 20A (100mV/A) ,2.5V tương ứng là 0A,VOM dothuc te: 2.746
+   dong1 = (dong1-2.748)/0.1;
  }
 
 }
@@ -217,82 +217,41 @@ void ham_doc_dong_2(){
      
   float voltage1 =((float)average_value1/1023)*5;   // Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
    
-   if(voltage1<=2.746){dong2=0;} // đo thực tế 0A tương ứng 2.746V
+   if(voltage1<=2.748){dong2=0;} // đo thực tế 0A tương ứng 2.746V
    else{
-    dong2 = voltage1 ; // Bây giờ ta chỉ cần tính ra giá trị dòng điện, 0.1 là độ nhạy của sensor 20A (100mV/A) ,2.5V tương ứng là 0A
-    dong2 = (dong2-2.746)/0.1;
+    dong2 = voltage1 ; // Bây giờ ta chỉ cần tính ra giá trị dòng điện, 0.1 là độ nhạy của sensor 20A (100mV/A) ,2.5V tương ứng là 0A,VOM đo thuc te 2.748V
+    dong2 = (dong2-2.748)/0.1;
     }
       
 }
 
 void ham_doc_NTC1(){
- 
-  // doc nhiet do NTC 10kohm
-      int samples[NUMSAMPLES];
-      uint8_t i;
-      float average;
-
-  // take N samples in a row, with a slight delay
-  for (i=0; i< NUMSAMPLES; i++) {
-   samples[i] = analogRead(temp_1);
-   delay(2);
-       }
-      
-    // average all the samples out
-   average = 0;
-   for (i=0; i< NUMSAMPLES; i++) {
-     average += samples[i];
+long total1 =0;
+  for( int n1 =0;n1<5;n1++){
+ total1 += analogRead(temp_1);
+delay(5);
   }
-  average /= NUMSAMPLES;
-      // Serial.print("Average analog reading "); 
-     //Serial.println(average);
-      // convert the value to resistance
- average = (1023/(float)average) - 1;
-  average = SERIESRESISTOR / average;
-  //Serial.print("Thermistor resistance "); 
-  //Serial.println(average);
-  float steinhart;
-  steinhart = average / THERMISTORNOMINAL;     // (R/Ro)
-  steinhart = log(steinhart);                  // ln(R/Ro)
-  steinhart /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
-  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
-  steinhart = 1.0 / steinhart;                 // Invert
-  steinhart -= 273.15;                        // convert absolute temp to C
-          /*
-          Serial.print("Nhiet do 1 (C):");
-          Serial.print(steinhart);
-          Serial.print(",");
-          */
-          nhietdo1 =steinhart;
+  float analogvalue = total1/5;
+ float resistance = (1023.0 / analogvalue - 1) * SERIESRESISTOR; // Tính điện trở NTC
+  // Chuyển đổi điện trở thành nhiệt độ (độ Celsius)
+  float temperature = 1 / (log(resistance / THERMISTORNOMINAL) / BCOEFFICIENT + 1 / (TEMPERATURENOMINAL + 273.15)) - 273.15;
+  nhietdo1= temperature;
 }
 
 void ham_doc_NTC2(){
   //ghi code vào đây
 // doc nhiet do NTC 10kohm so 2
-   int samples2[NUMSAMPLES];
-    uint8_t i1;
-      float average1;
-    
-  // take N samples in a row, with a slight delay
-  for (i1=0; i1< NUMSAMPLES; i1++) {
-   samples2[i1] = analogRead(temp_2);
-   delay(2);
+  long total2 =0;
+  for( int n2 =0;n2<5;n2++){
+ total2 += analogRead(temp_2);
+delay(5);
   }
-      
-    // average all the samples out
-  average1 = 0;
-  for (i1=0; i1< NUMSAMPLES; i1++) {
-     average1 += samples2[i1];
-  }
-  average1 /= NUMSAMPLES;
+   float analogvalue1 = total2/5;
+  
  // Serial.print("Average analog reading "); 
   //Serial.println(average1);
-  // convert the value to resistance
-  //average1 = 1023 / average1 - 1;
-  // Chuyển đổi giá trị analog thành điện áp
+  float average1 = ((1023/analogvalue1) - 1.0)*SERIESRESISTOR;
 
-  average1 = (1023/(float)average1) - 1;
-  average1 = SERIESRESISTOR / average1;
   
   //Serial.println(average1);
   
@@ -336,7 +295,6 @@ void hien_thi_dien_ap2() {
 // Hàm hiển thị dòng điện
 void hien_thi_dong_dien1() {
     if (dong1 != last_dong1) {  // So sánh với giá trị trước đó
-        
         lcd.setCursor(0, 1);
         lcd.print("   A1: ");
         lcd.print(dong1);
@@ -346,7 +304,6 @@ void hien_thi_dong_dien1() {
 }
 void hien_thi_dong_dien2() {
     if (dong2 != last_dong2) {  // So sánh với giá trị trước đó
-        
         lcd.setCursor(0, 1);
         lcd.print("   A2: ");
         lcd.print(dong2);
@@ -463,8 +420,6 @@ void showScreen(int screen) {
     lcd.print("   T2: ");
         lcd.print(nhietdo2);
         lcd.print(" C    ");
-  
-  
 
   } else if (screen == 6) {
      
@@ -485,7 +440,7 @@ void showScreen(int screen) {
 }
 //ham bat dau sac
 void startCharging() {
-  if (ap1 < 41.6 && nhietdo1 < 45) {
+  if (ap1 < 41.6 && nhietdo1 < 47) {
    // lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("   Charging...   ");
@@ -600,7 +555,7 @@ void loop() {
        // charge 1
     if (charging) {
       if (ap1 >= 40.9 && dong1 <= 0.09) {
-        if (nhietdo1 <= 33) {
+        if (nhietdo1 <= 37) {
           startDischarging();  // Điều kiện để chuyển qua xả
         } else {
           lcd.setCursor(0, 0);
@@ -611,7 +566,7 @@ void loop() {
    
     if (discharging) {
       if (ap1 <= 20) {
-        if (nhietdo1 < 45) {
+        if (nhietdo1 < 47) {
           startCharging();  // Điều kiện để quay lại sạc
           cycle1 ++ ;
         } else {
@@ -624,7 +579,7 @@ void loop() {
      // charge 2
     if (charging2) {
       if (ap2 >= 40.9 && dong2 <= 0.09) {
-        if (nhietdo2 <= 33) {
+        if (nhietdo2 <= 37) {
           startDischarging2();  // Điều kiện để chuyển qua xả
         } else {
           lcd.setCursor(0, 0);
@@ -635,7 +590,7 @@ void loop() {
 
     if (discharging2) {
       if (ap2 <= 20) {
-        if (nhietdo2 < 45) {
+        if (nhietdo2 < 47) {
           startCharging2();  // Điều kiện để quay lại sạc
           cycle2 ++ ;
         } else {
