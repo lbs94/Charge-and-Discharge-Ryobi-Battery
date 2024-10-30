@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
 
-// initialize the library by associating any needed LCD interface pin
-// with the arduino pin number it is connected to
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 /*The circuit:
@@ -17,35 +15,13 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
  * ends to +5V and ground
  * V0 qua biên trở 10k để chỉnh độ sáng chữ hiện
 */
-// put function declarations here:
-//const float A = 1.009249522e-03;  // Hằng số Steinhart-Hart, xem datasheet ntc
-//const float B = 2.378405444e-04;
-//const float C = 2.019202697e-07;
-//const float dientro = 10000;  // Điện trở nối tiếp với NTC: 10kΩ,có thể chọn dien tro khác
 
-
-// code này khi dùng hệ số beta
-/*const float nominalResistance = 10000;  // 10kΩ tại 25°C
-const float nominalTemperature = 25;    // 25°C là nhiệt độ tham chiếu
-const float beta = 3950;                // Hệ số Beta từ datasheet
-const float dientro = 10000;     // Điện trở nối tiếp 10kΩ
-NTCtemp ntc(dientro, nominalResistance, nominalTemperature, beta);
-*/
 //CÁC BIẾN CẦN DÙNG
-//5V qua 1 chân trở 10k, chân còn lại qua NTC ,giữa chân sensor với trở kéo dây ra đưa về arduino
-// resistance at 25 degrees C
-// chân còn lại của trở nối về GND
-#define THERMISTORNOMINAL 10000      
-// temp. for nominal resistance (almost always 25 C)
-#define TEMPERATURENOMINAL 25   
-// how many samples to take and average, more takes longer
-// but is more 'smooth'
-#define NUMSAMPLES 5
-// The beta coefficient of the thermistor (usually 3000-4000)
-#define BCOEFFICIENT 3435
-// the value of the 'other' resistor
-#define SERIESRESISTOR 9690   // điên trở thực tế,đo VOM để lấy  
-
+#define THERMISTORNOMINAL 10000   // resistance at 25 degrees C   
+#define TEMPERATURENOMINAL 25   // temp. for nominal resistance (almost always 25 C)
+#define BCOEFFICIENT 3435 // The beta coefficient of the thermistor (usually 3000-4000)
+#define SERIESRESISTOR 9690   // the value of the 'other' resistor, điên trở thực tế,đo VOM để lấy  
+#define NUMSAMPLES 5 // how many samples to take and average, more takes longer but is more 'smooth'
 #define current_sensor_1 A0
 #define current_sensor_2 A1
 #define volt_sensor_2 A2
@@ -56,11 +32,9 @@ NTCtemp ntc(dientro, nominalResistance, nominalTemperature, beta);
 #define relay_charge_adaptor_2 6 //kích sạc gồm bật nguồn ac và T1 trong adaptor 2
 #define discharge_1 8 //đóng ngắt mosfet trong adaptor phần xả pin 1
 #define relay_5 7 //out điều khiển relay,mục đích chưa rõ
-#define bat_tat 10 //nhấn lần 1 start,nhấn lần nữa stop hiện lên lcd ,16 trên arduino micro, 10 trên arduino uno
+#define bat_tat 16 //nhấn lần 1 start,nhấn lần nữa stop hiện lên lcd ,16 trên arduino micro, 10 trên arduino uno
 #define enter 9 //chuyển đổi giữa các màn hình hiển thị lcd : áp1,dòng1,Temp1 , áp2,dòng2,Temp2 , trạng thái đang sạc hay đang xả
 
-// biến thời gian để chạy 1 giây 1 lần
-unsigned long previousMillis1 = 0;
 
 float ap1; // gia tri của ham_doc_ap_1()
 float ap2; // gia tri của ham_doc_ap_2()
@@ -82,14 +56,16 @@ int cycle2 = 0;
 bool charging = false;
 bool discharging = false;
 bool errorState = false;
-bool systemRunning = false; // Quản lý trạng thái bật tắt hệ thống
 bool charging2 = false;
 bool discharging2 = false;
 bool errorState2 = false;
+bool systemRunning = false; // Quản lý trạng thái bật tắt hệ thống
+
 // Non-blocking delay function
 unsigned long lastUpdateMillis = 0;
 const long updateInterval = 808;
-const long interval1 = 1000; //1s
+const long interval1 = 1000; //// biến thời gian để chạy 1 giây 1 lần
+unsigned long previousMillis1 = 0;
 // put function definitions here:
 // đọc áp từ tranducer 1
 void ham_doc_ap_1(){
@@ -97,8 +73,7 @@ void ham_doc_ap_1(){
 int samples3[NUMSAMPLES];
       uint8_t i2;
       float average_value3;
-     
-      // take N samples in a row, with a slight delay
+     // take NUMSAMPLES samples in a row, with a slight delay
       for (i2=0; i2 < NUMSAMPLES; i2++)
          {
             samples3[i2]= analogRead(volt_sensor_1); 
@@ -112,9 +87,8 @@ int samples3[NUMSAMPLES];
            average_value3 += samples3[i2];
         }
           average_value3 /= NUMSAMPLES;
-// Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023 (8bit)
-//Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
-      
+// Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023 
+//Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V 
 float v11 = ((float)average_value3/1023)*5;
 if(v11<=0.05){ap1=0;} // nhỏ hơn 1V thì =0 hết
 else{
@@ -133,8 +107,7 @@ void ham_doc_ap_2(){
 int samples2[NUMSAMPLES];
       uint8_t l;
       float average_value2;
-    
-      // take N samples in a row, with a slight delay
+      // take NUMSAMPLES samples in a row, with a slight delay
       for (l=0; l< NUMSAMPLES; l++)
          {
             samples2[l] = analogRead(volt_sensor_2);
@@ -148,16 +121,15 @@ int samples2[NUMSAMPLES];
            average_value2 += samples2[l];
         }
           average_value2 /= NUMSAMPLES;
-// Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023 (8bit)
+// Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023 
 //Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
-
 float v21 = ((float)average_value2/1023)*5;
 if(v21<= 0.05){ap2=0;} // nhỏ hơn 1V thì =0 hết
 else{
     ap2 = v21*2*10 ; // *2*10
 }
-  /*
-Serial.print("Volt 2 (V):");
+    /*
+    Serial.print("Volt 2 (V):");
     Serial.print(ap2);
     Serial.print(",");
     */
@@ -169,7 +141,7 @@ int samples[NUMSAMPLES];
       uint8_t j;
       float average_value;
     
-      // take N samples in a row, with a slight delay
+      // take UMSAMPLES samples in a row, with a slight delay
       for (j=0; j< NUMSAMPLES; j++)
          {
             samples[j] = analogRead(current_sensor_1);
@@ -183,9 +155,8 @@ int samples[NUMSAMPLES];
            average_value += samples[j];
         }
           average_value /= NUMSAMPLES;
-     // Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023 (8bit)
+     // Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023
  float voltage =((float)average_value/1023)*5;   // Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
-  
  if(voltage<=2.748){dong1=0;} // Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
  else{
    dong1 = voltage ; // Bây giờ ta chỉ cần tính ra giá trị dòng điện, 0.1 là độ nhạy của sensor 20A (100mV/A) ,2.5V tương ứng là 0A,VOM dothuc te: 2.746
@@ -200,11 +171,11 @@ void ham_doc_dong_2(){
       uint8_t k;
       float average_value1;
      
-      // take N samples in a row, with a slight delay
+      // take NUMSAMPLES samples in a row, with a slight delay
       for (k = 0; k < NUMSAMPLES; k++)
          {
-            samples1[k] = analogRead(current_sensor_2);   // Ta sẽ đọc giá trị hiệu điện thế của cảm biến
-            delay(2);
+            samples1[k] = analogRead(current_sensor_2);   
+                        delay(2);
          }
      
     // average all the samples out
@@ -228,11 +199,11 @@ void ham_doc_dong_2(){
 void ham_doc_NTC1(){
 long total1 =0;
   for( int n1 =0;n1<5;n1++){
- total1 += analogRead(temp_1);
-delay(5);
+     total1 += analogRead(temp_1);
+     delay(5);
   }
   float analogvalue = total1/5;
- float resistance = (1023.0 / analogvalue - 1) * SERIESRESISTOR; // Tính điện trở NTC
+  float resistance = (1023.0 / analogvalue - 1) * SERIESRESISTOR; // Tính điện trở NTC
   // Chuyển đổi điện trở thành nhiệt độ (độ Celsius)
   float temperature = 1 / (log(resistance / THERMISTORNOMINAL) / BCOEFFICIENT + 1 / (TEMPERATURENOMINAL + 273.15)) - 273.15;
   nhietdo1= temperature;
@@ -243,18 +214,11 @@ void ham_doc_NTC2(){
 // doc nhiet do NTC 10kohm so 2
   long total2 =0;
   for( int n2 =0;n2<5;n2++){
- total2 += analogRead(temp_2);
-delay(5);
+     total2 += analogRead(temp_2);
+     delay(5);
   }
    float analogvalue1 = total2/5;
-  
- // Serial.print("Average analog reading "); 
-  //Serial.println(average1);
-  float average1 = ((1023/analogvalue1) - 1.0)*SERIESRESISTOR;
-
-  
-  //Serial.println(average1);
-  
+   float average1 = ((1023/analogvalue1) - 1.0)*SERIESRESISTOR; 
   float steinhart1;
   steinhart1 = average1 / THERMISTORNOMINAL;     // (R/Ro)
   steinhart1 = log(steinhart1);                  // ln(R/Ro)
@@ -262,18 +226,12 @@ delay(5);
   steinhart1 += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
   steinhart1 = 1.0 / steinhart1;                 // Invert
   steinhart1 -= 273.15;                        // convert absolute temp to C
-          /*
-          Serial.print("Nhiet do 2 (C):");
-          Serial.print(steinhart1);
-          Serial.print(",");
-          */
-          nhietdo2=steinhart1;
+  nhietdo2=steinhart1;
 }
 
 // Hàm hiển thị điện áp
 void hien_thi_dien_ap1() {
-    if (ap1 != last_ap1) {  // So sánh với giá trị trước đó
-      
+    if (ap1 != last_ap1) {  
         lcd.setCursor(0, 1);
         lcd.print("   V1: ");
         lcd.print(ap1);
@@ -282,7 +240,7 @@ void hien_thi_dien_ap1() {
     }
 }
 void hien_thi_dien_ap2() {
-    if (ap2 != last_ap2) {  // So sánh với giá trị trước đó
+    if (ap2 != last_ap2) {  
       
         lcd.setCursor(0, 1);
         lcd.print("   V2: ");
@@ -294,7 +252,7 @@ void hien_thi_dien_ap2() {
 
 // Hàm hiển thị dòng điện
 void hien_thi_dong_dien1() {
-    if (dong1 != last_dong1) {  // So sánh với giá trị trước đó
+    if (dong1 != last_dong1) {  
         lcd.setCursor(0, 1);
         lcd.print("   A1: ");
         lcd.print(dong1);
@@ -303,7 +261,7 @@ void hien_thi_dong_dien1() {
     }
 }
 void hien_thi_dong_dien2() {
-    if (dong2 != last_dong2) {  // So sánh với giá trị trước đó
+    if (dong2 != last_dong2) { 
         lcd.setCursor(0, 1);
         lcd.print("   A2: ");
         lcd.print(dong2);
@@ -314,7 +272,7 @@ void hien_thi_dong_dien2() {
 // Hàm hiển thị nhiệt độ
 void hien_thi_nhiet_do1() {
  
-    if (nhietdo1 != last_nhietdo1) {  // So sánh với giá trị trước đó
+    if (nhietdo1 != last_nhietdo1) {  
         lcd.setCursor(0, 1);
         lcd.print("   T1:");
         lcd.print(nhietdo1);
@@ -324,7 +282,7 @@ void hien_thi_nhiet_do1() {
 
 }
 void hien_thi_nhiet_do2() {
-    if (nhietdo2 != last_nhietdo2) {  // So sánh với giá trị trước đó
+    if (nhietdo2 != last_nhietdo2) { 
         lcd.setCursor(0, 1);
         lcd.print("   T2:");
         lcd.print(nhietdo2);
@@ -439,8 +397,8 @@ void showScreen(int screen) {
 
 }
 //ham bat dau sac
-void startCharging() {
-  if (ap1 < 41.6 && nhietdo1 < 47) {
+void startCharging1() {
+  if (ap1 < 41.6 && nhietdo1 < 45) {
    // lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("   Charging...   ");
@@ -450,16 +408,16 @@ void startCharging() {
   } else {
     lcd.setCursor(0, 0);
     lcd.print("Charging Failed");
+    errorState =true;
   }
 }
 // Hàm bắt đầu xả
-void startDischarging() {
+void startDischarging1() {
   //lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print(" DisCharging...");
   digitalWrite(relay_charge_adaptor_1,LOW);
   digitalWrite(discharge_1,HIGH);
-  
   charging = false;
   discharging = true;
 }
@@ -475,6 +433,7 @@ void startCharging2() {
   } else {
     lcd.setCursor(0, 0);
     lcd.print("Charging Failed");
+    errorState2 =true;
   }
 }
 // Hàm bắt đầu xả 2
@@ -502,8 +461,8 @@ void stopSystem() {
 }
 void setup() {
   // put your setup code here, to run once:
-  // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
+  Serial.begin(9600); // open port 9600
+  lcd.begin(16, 2);// set up the LCD's number of columns and rows:
   lcd.clear(); // clear man hình
   // Print a message to the LCD.
   lcd.print(" Press BT1 start");
@@ -524,7 +483,7 @@ void setup() {
    digitalWrite(relay_charge_adaptor_2,LOW);
    digitalWrite(discharge_1,LOW);
    digitalWrite(relay_5,LOW);
- Serial.begin(9600); // mở port ở mức 9600
+ 
 }
 
 void loop() {
@@ -544,7 +503,7 @@ void loop() {
     // Thay đổi trạng thái hệ thống
     if (!systemRunning) {
       systemRunning = true;  // Bật hệ thống
-      startCharging();       // Bắt đầu sạc
+      startCharging1();       // Bắt đầu sạc
       startCharging2();       // Bắt đầu sạc
     } else {
       stopSystem();          // Tắt toàn bộ hệ thống
@@ -556,7 +515,7 @@ void loop() {
     if (charging) {
       if (ap1 >= 40.9 && dong1 <= 0.09) {
         if (nhietdo1 <= 37) {
-          startDischarging();  // Điều kiện để chuyển qua xả
+          startDischarging1();  // Điều kiện để chuyển qua xả
         } else {
           lcd.setCursor(0, 0);
           lcd.print("Temp too high!");
@@ -567,7 +526,7 @@ void loop() {
     if (discharging) {
       if (ap1 <= 20) {
         if (nhietdo1 < 47) {
-          startCharging();  // Điều kiện để quay lại sạc
+          startCharging1();  // Điều kiện để quay lại sạc
           cycle1 ++ ;
         } else {
           lcd.setCursor(0, 0);
@@ -614,25 +573,25 @@ void loop() {
     showScreen(currentScreen);  // Hiển thị thông tin tương ứng với màn hình
     currentScreen++;    // Chuyển sang màn hình tiếp theo
   }
-  // Cập nhật nội dung màn hình mỗi 808ms
+  // Cập nhật nội dung màn hình mỗi updateInterval
     if (millis() - lastUpdateMillis >= updateInterval) {
         lastUpdateMillis = millis();
     updatescreen(currentScreen);
 
   }
-  
   lastButtonStateBT2 = buttonStateBT2;  // Cập nhật trạng thái của nút nhấn
   lastButtonStateBT1 = buttonStateBT1;  // Cập nhật trạng thái nút nhấn
   
-    if(Serial.available()>0){
+  if(Serial.available()>0){
   if (currentMillis - previousMillis1 >= interval1) {
     previousMillis1 = currentMillis;
+      // cycle
     Serial.print("Cycle pack 1: ");
     Serial.print(cycle1);
     Serial.print(",");
     Serial.print("Cycle pack 2: ");
     Serial.print(cycle2);
-     Serial.print(",");
+    Serial.print(",");
    //ham_doc_ap_1();
     Serial.print("Volt 1 (V):");
     Serial.print(ap1);
@@ -643,20 +602,20 @@ void loop() {
     Serial.print(",");
    //ham_doc_dong_1();
    Serial.print("Current 1 (A):");
-          Serial.print(dong1);
-          Serial.print(",");
+   Serial.print(dong1);
+   Serial.print(",");
   // ham_doc_dong_2();
    Serial.print("Current 2 (A):");
-          Serial.print(dong2);
-          Serial.print(",");
+   Serial.print(dong2);
+   Serial.print(",");
    //ham_doc_NTC1();
    Serial.print("Nhiet do 1 (C):");
-          Serial.print(nhietdo1);
-          Serial.print(",");
+   Serial.print(nhietdo1);
+   Serial.print(",");
    //ham_doc_NTC2();
    Serial.print("Nhiet do 2 (C):");
-          Serial.print(nhietdo2);
-          Serial.print(",");
+   Serial.print(nhietdo2);
+   Serial.print(",");
    Serial.println("");
  }
     
