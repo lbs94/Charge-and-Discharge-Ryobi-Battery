@@ -1,7 +1,13 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
-
-const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+#include <Wire.h> 
+//#include <LiquidCrystal_I2C.h>
+//LiquidCrystal_I2C lcd(0x3F,16,2); // Địa chỉ I2C, số cột, số dòng
+// Sử dụng chân mặc định cho lcd i2C
+//Wire.begin();  // Sử dụng SDA=2, SCL=3
+// Hoặc sử dụng chân thay thế
+//Wire.begin(4, 5);  // SDA=4, SCL=5
+const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2; // sơ đồ kết nối chân lcd 16x2a với arduino
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 /*The circuit:
  * LCD RS pin to digital pin 12
@@ -32,7 +38,7 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 #define relay_charge_adaptor_2 6 //kích sạc gồm bật nguồn ac và T1 trong adaptor 2
 #define discharge_1 8 //đóng ngắt mosfet trong adaptor phần xả pin 1
 #define relay_5 7 //out điều khiển relay,mục đích chưa rõ
-#define bat_tat 16 //nhấn lần 1 start,nhấn lần nữa stop hiện lên lcd ,16 trên arduino micro, 10 trên arduino uno
+#define bat_tat 10 //nhấn lần 1 start,nhấn lần nữa stop hiện lên lcd ,16 trên arduino micro, 10 trên arduino uno
 #define enter 9 //chuyển đổi giữa các màn hình hiển thị lcd : áp1,dòng1,Temp1 , áp2,dòng2,Temp2 , trạng thái đang sạc hay đang xả
 
 
@@ -63,9 +69,13 @@ bool systemRunning = false; // Quản lý trạng thái bật tắt hệ thống
 
 // Non-blocking delay function
 unsigned long lastUpdateMillis = 0;
-const long updateInterval = 808;
-const long interval1 = 1000; //// biến thời gian để chạy 1 giây 1 lần
-unsigned long previousMillis1 = 0;
+unsigned long lastUpdateMillisADC=0;
+unsigned long lastUpdateMillisCOM = 0;
+unsigned long lastUpdateMillisCharge =0;
+const long updateIntervalLCD = 1500;
+const long updateIntervalCOM = 1000; //// biến thời gian để chạy 1 giây 1 lần
+const long updateIntervalADC = 500;  // Interval for ADC readings (500 ms)
+const long updateIntervalCharge = 60000;  // Interval for ADC readings (60s)
 // put function definitions here:
 // đọc áp từ tranducer 1
 void ham_doc_ap_1(){
@@ -121,8 +131,6 @@ int samples2[NUMSAMPLES];
            average_value2 += samples2[l];
         }
           average_value2 /= NUMSAMPLES;
-// Ta sẽ đọc giá trị của cảm biến được arduino số hóa trong khoảng từ 0-1023 
-//Giá trị được số hóa thành 1 số nguyên có giá trị trong khoảng từ 0 đến 1023 tuong ứng 0-5V
 float v21 = ((float)average_value2/1023)*5;
 if(v21<= 0.05){ap2=0;} // nhỏ hơn 1V thì =0 hết
 else{
@@ -403,9 +411,12 @@ void startCharging1() {
     lcd.setCursor(0, 0);
     lcd.print("   Charging...   ");
     digitalWrite(relay_charge_adaptor_1,HIGH);
+    
+    lcd.print("   Charging...   ");
     charging = true;
     discharging = false;
-  } else {
+    
+} else {
     lcd.setCursor(0, 0);
     lcd.print("Charging Failed");
     errorState =true;
@@ -428,14 +439,16 @@ void startCharging2() {
     lcd.setCursor(0, 0);
     lcd.print("   Charging...   ");
     digitalWrite(relay_charge_adaptor_2,HIGH);
+   
     charging2 = true;
     discharging2 = false;
-  } else {
+   
+} else {
     lcd.setCursor(0, 0);
     lcd.print("Charging Failed");
     errorState2 =true;
   }
-}
+  }
 // Hàm bắt đầu xả 2
 void startDischarging2() {
   //lcd.clear();
@@ -462,6 +475,12 @@ void stopSystem() {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600); // open port 9600
+  /*
+  //code cho LCD I2C
+  lcd.init();    //Khởi động màn hình LCD                
+  lcd.backlight();//Bật đèn nền LCD 16×2.
+  
+  */
   lcd.begin(16, 2);// set up the LCD's number of columns and rows:
   lcd.clear(); // clear man hình
   // Print a message to the LCD.
@@ -488,15 +507,10 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-    unsigned long currentMillis = millis();
+   
     buttonStateBT1 = digitalRead(bat_tat);  // Đọc trạng thái nút nhấn
     buttonStateBT2 = digitalRead(enter);
-        ham_doc_ap_1();
-        ham_doc_dong_1();
-        ham_doc_NTC1();
-        ham_doc_ap_2();
-        ham_doc_dong_2();
-        ham_doc_NTC2();
+      
   // Nếu nút được nhấn và trạng thái khác lần nhấn trước (chống rung tín hiệu)
   if (buttonStateBT1 == LOW && lastButtonStateBT1 == HIGH) {
     delay(50);  // Đợi một chút để tránh việc đọc nhiều lần (chống dội phím)
@@ -574,17 +588,28 @@ void loop() {
     currentScreen++;    // Chuyển sang màn hình tiếp theo
   }
   // Cập nhật nội dung màn hình mỗi updateInterval
-    if (millis() - lastUpdateMillis >= updateInterval) {
+    if (millis() - lastUpdateMillis >= updateIntervalLCD) {
         lastUpdateMillis = millis();
     updatescreen(currentScreen);
 
+  }
+  // Cập nhật ADC read mỗi updateInterval
+    if (millis() - lastUpdateMillisADC >= updateIntervalADC) {
+        lastUpdateMillisADC = millis();
+          ham_doc_ap_1();
+          ham_doc_dong_1();
+          ham_doc_NTC1();
+          ham_doc_ap_2();
+          ham_doc_dong_2();
+          ham_doc_NTC2();
+  
   }
   lastButtonStateBT2 = buttonStateBT2;  // Cập nhật trạng thái của nút nhấn
   lastButtonStateBT1 = buttonStateBT1;  // Cập nhật trạng thái nút nhấn
   
   if(Serial.available()>0){
-  if (currentMillis - previousMillis1 >= interval1) {
-    previousMillis1 = currentMillis;
+  if (millis() - lastUpdateMillisCOM >= updateIntervalCOM) {
+    lastUpdateMillisCOM = millis();
       // cycle
     Serial.print("Cycle pack 1: ");
     Serial.print(cycle1);
