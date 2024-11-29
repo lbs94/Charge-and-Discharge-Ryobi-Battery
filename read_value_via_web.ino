@@ -253,7 +253,7 @@ void connectToWiFi() {
         Serial.println("Connected!");
         Serial.println(WiFi.localIP());
     } else {
-        Serial.println("Failed to connect. Starting AP mode.");
+        Serial.println("Failed to connect. Starting AP mode::192.268.4.1");
         WiFi.softAP("ESP32-AP");
         Serial.println(WiFi.softAPIP());
     }
